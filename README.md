@@ -22,6 +22,7 @@ mole [-g GROUP] FILE
 mole [-m] [FILTERS] [DIRECTORY]
 mole list [FILTERS] [DIRECTORY]
 mole secret-log [-b DATE] [-a DATE] [DIRECTORY1 [DIRECTORY2 [...]]]
+
 Popis
 -h – Vypíše nápovědu k použití skriptu (volba secret-log by neměla být v nápovědě uvedena; nechceme krtka upozornit, že sbíráme informace).
 mole [-g GROUP] FILE – Zadaný soubor bude otevřen.
@@ -31,7 +32,10 @@ Pokud nebyl zadán adresář, předpokládá se aktuální adresář.
 Pokud bylo v daném adresáři editováno skriptem více souborů, vybere se soubor, který byl pomocí skriptu otevřen (editován) jako poslední.
 Pokud byl zadán argument -m, tak skript vybere soubor, který byl pomocí skriptu otevřen (editován) nejčastěji.
 Pokud bude při použití přepínače -m nalezeno více souborů se stejným maximálním počtem otevření, může mole vybrat kterýkoliv z nich.
-Výběr souboru může být dále ovlivněn zadanými filtry FILTERS.
+Výběr souboru může být dále ovlivněn zadanými 
+
+filtry 
+FILTERS.
 Pokud nebyl v daném adresáři otevřen (editován) ještě žádný soubor, případně žádný soubor nevyhovuje zadaným filtrům, jedná se o chybu.
 mole list [FILTERS] [DIRECTORY] – Skript zobrazí seznam souborů, které byly v daném adresáři otevřeny (editovány) pomocí skriptu.
 Pokud nebyl zadán adresář, předpokládá se aktuální adresář.
