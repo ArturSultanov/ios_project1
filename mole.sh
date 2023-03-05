@@ -1,3 +1,3 @@
 POSIXLY_CORRECT=yes.
 
-printf "Hello\n"
+printf "Hello\n\n"
