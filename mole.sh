@@ -1,3 +1,3 @@
-POSIXLY_CORRECT=yes.
+#!/bin/sh
 
-printf "Hello\n\n"
+POSIXLY_CORRECT=yes
