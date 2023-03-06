@@ -92,3 +92,7 @@ else
         echo "Chyba: soubor neexistuje"
         help
 fi
+
+last_id=$#
+last_element=${@:last_id}
+
