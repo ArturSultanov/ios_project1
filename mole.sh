@@ -15,9 +15,13 @@ fi
 if [ ! -f $MOLE_RC ]; then
 		touch "$MOLE_RC"
 		echo "MOLE_RC byl vytvoren"
-fi
-	
-eval echo '$'$# #get last argument
+fi 
+
+lastArg=
+
+eval lastArg='$'$# #get last argument
+
+echo $lastArg
 
 while getopts 'hg:a:b:' OPTION; do
 	case "$OPTION" in
@@ -43,6 +47,3 @@ while getopts 'hg:a:b:' OPTION; do
       	 ;;
       esac
     done
-
-echo hello
-check
