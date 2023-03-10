@@ -19,9 +19,33 @@ fi
 
 lastArg=
 
-eval lastArg='$'$# #get last argument
+eval lastArg='$'$# 				#get last argument
 
-echo $lastArg
+#'vi' $lastArg
+
+ 
+
+#Open file using EDITOR, VISUAL or vi
+if [ $# ]; then				#check if user has typed any argumnts 
+	if [ -f $lastArg ]; then	
+	
+		if [ -z  $EDITOR ]; then
+			echo kek
+			if [ -z $VISUAL ]; then
+				'vi' $lastArg		#using vi as default option
+			else
+				eval '$VISUAL' $lastArg
+			fi
+		else
+			eval '$EDITOR' $lastArg
+		fi
+	fi		
+else 
+	echo "Nezadal jste zadny argument"
+fi
+
+
+
 
 while getopts 'hg:a:b:' OPTION; do
 	case "$OPTION" in
@@ -46,4 +70,4 @@ while getopts 'hg:a:b:' OPTION; do
       	 #exit 1
       	 ;;
       esac
-    done
+   done
