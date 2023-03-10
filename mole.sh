@@ -7,11 +7,42 @@ function check(){
 	echo hi	
 }
 
-function parse_param()
-{
+if [ -z $MOLE_RC ]; then
+	echo "MOLE_RC neexistuje" >&2
+	exit 1
+fi
 
-}
+if [ ! -f $MOLE_RC ]; then
+		touch "$MOLE_RC"
+		echo "MOLE_RC byl vytvoren"
+fi
+	
+eval echo '$'$# #get last argument
+
+while getopts 'hg:a:b:' OPTION; do
+	case "$OPTION" in
+	h)
+	 echo "
+		mole -h
+		mole [-g GROUP] FILE
+		mole [-m] [FILTERS] [DIRECTORY]
+		mole list [FILTERS] [DIRECTORY]" ;;
+ 
+    	g) 
+      	 echo "Option a used" ;;
+
+    	b)
+      	 echo "Option b used" ;;
+
+    	c)
+      	 echo "Option c used" ;;	
+
+	?) 
+      	 echo "WOW!"
+      	 #exit 1
+      	 ;;
+      esac
+    done
 
 echo hello
 check
-parse_param
