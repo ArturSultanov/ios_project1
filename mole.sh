@@ -23,6 +23,7 @@ function openEditor () { #Open file using EDITOR, VISUAL or vi.
 
 if [ -z $MOLE_RC ]; then
 	echo "MOLE_RC neexistuje" >&2
+	exit 2
 fi
 
 if [ ! -f $MOLE_RC ]; then
@@ -41,25 +42,56 @@ fi
 
 eval lastArg='$'$#
 
-while getopts :hg::m OPTION; 
+gWasCalled=false
+mWasCalled=false
+
+
+while getopts :h OPTION;
 do	case "$OPTION" in
 	h)
-	 echo "
-		mole -h
-		mole [-g GROUP] FILE
-		mole [-m] [FILTERS] [DIRECTORY]
-		mole list [FILTERS] [DIRECTORY]" ;;
- 
-    	g) 
-      	 echo "Option a used" | openEditor;;    	
+	 	 echo "
+			mole -h
+			mole [-g GROUP] FILE
+			mole [-m] [FILTERS] [DIRECTORY]
+			mole list [FILTERS] [DIRECTORY]" ;;
+ esac
+done
 
-    	m)
-      	 echo "Option c used" ;;	
 
-	*) 
-      	 ;;
-      esac
-   done
+
+
+	while getopts :g:m OPTION; 
+	do	case "$OPTION" in
+		    		g) 
+      	 	gWasCalled=true
+			if [ -f $lastArg ]; then
+
+			if [ "$lastArg" = "$OPTARG" ]; then
+	 			echo "You used '-g', but didn't select the group you want to add the file to" >&2 
+				exit 2 
+			fi
+
+	 		eval echo "$lastArg,$PWD,$(date +%Y-%m-%d),$OPTARG" >>$MOLE_RC 
+	 		echo "Option g used"
+	 		openEditor
+		else 
+			echo "You used '-g', but didn't chose a file."
+		fi 
+	 		;;    	
+
+    		m)
+	 	mWasCalled=true
+      	 	echo "Option c used" ;;	
+
+		?)
+	 	printf "Usage: %s: [-h] [-m] [-g GROUP] args\n" $0 
+      	 	;;
+      	 esac
+   	done
+
+#if [ "$gWasCalled" = false ]; then
+#	openEditor
+#fi
 
 #shift $OPTIND
 #echo "Remaining arguments: '$*'"
