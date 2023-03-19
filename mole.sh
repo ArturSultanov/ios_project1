@@ -108,23 +108,15 @@ while getopts "hmg:a:b:" opt; do
 
         m)
             	mostFrequent=true
-		shift
 	;;
 	g)
 		groupFilter="$OPTARG"
-		shift
-		shift
         ;;
 	a)
 		dateAfter="$OPTARG"
-		shift
-		shift
-
 	;;
         b)
             	dateIgnored="$OPTARG"
-		shift
-		shift
         ;;
         \?)
             	echo "Wrong flag: -$OPTARG" >&2
@@ -132,6 +124,8 @@ while getopts "hmg:a:b:" opt; do
        	;;
     esac
 done
+
+shift $((OPTIND-1))
 
 if [ "$#" != 0 ]; then
 	if [ "$1" != "$directory" ]; then
