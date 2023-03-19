@@ -5,11 +5,11 @@ export LC_NUMERIC=en_US.UTF-8
 
 ##### FUNCTIONS #####
 
-function openEditor () { #Open file using EDITOR, VISUAL or vi.
+openEditor () { #Open file using EDITOR, VISUAL or vi.
 	if [ -f $lastArg ]; then	
 		if [ -z  $EDITOR ]; then
 			if [ -z $VISUAL ]; then	
-				eval 'vi'  $lastArg
+				eval 'vi' $lastArg
 			else
 				eval '$VISUAL' $lastArg
 			fi
@@ -42,10 +42,12 @@ fi
 
 eval lastArg='$'$#
 
+
 #if lastArg is a file. User want to edit file or (and) to add to a group. 
 
 if [ -f $lastArg ] && [ "$#" != "0" ]; then #check if lastArg is a file.
 	if [ "$#" != "0" ]; then #check if lastArg is not a script name.
+		gWasCalled=false
 		while getopts :g: OPTION; 
 		do	case "$OPTION" in
 		
