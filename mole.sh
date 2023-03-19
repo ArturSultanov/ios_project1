@@ -6,18 +6,18 @@ export LC_NUMERIC=en_US.UTF-8
 ##### FUNCTIONS #####
 
 openEditor () { #Open file using EDITOR, VISUAL or vi.
-	if [ -f $lastArg ]; then	
+	if [ -f $1 ]; then	
 		if [ -z  $EDITOR ]; then
 			if [ -z $VISUAL ]; then	
-				eval 'vi' $lastArg
+				eval 'vi' "$1"
 			else
-				eval '$VISUAL' $lastArg
+				eval '$VISUAL' "$1"
 			fi
 		else
-			eval '$EDITOR' $lastArg
+			eval '$EDITOR' "$1"
 		fi
 	else
-		eval echo "$lastArg is not a file. Cant open editor" >&2
+		echo "$1 is not a file. Cant open editor" >&2
 	fi		
 }
 
@@ -41,12 +41,15 @@ fi
 ##### MAIN #####
 
 eval lastArg='$'$#
+directory="$PWD"	#[DIRECTORY]
 
 
 #if lastArg is a file. User want to edit file or (and) to add to a group. 
 
 if [ -f $lastArg ] && [ "$#" != "0" ]; then #check if lastArg is a file.
 	if [ "$#" != "0" ]; then #check if lastArg is not a script name.
+		filePath="$directory/$lastArg"	
+	
 		gWasCalled=false
 		while getopts :g: OPTION; 
 		do	case "$OPTION" in
@@ -60,16 +63,20 @@ if [ -f $lastArg ] && [ "$#" != "0" ]; then #check if lastArg is a file.
 			fi
 
 	 		eval echo "$lastArg,$PWD,$(date +%Y-%m-%d),$OPTARG" >>$MOLE_RC #write file_name,path,date,group to $MOLE_RC 
-	 		openEditor 
+	 		openEditor "$filePath" 
 	 		;;    
 		esac
 		done
 		
 		if [ "$gWasCalled" = false ]; then #if -g key wasn't used
-			openEditor
+			openEditor "$filePath"
 		fi
 
 	fi
+#elif second arg. is list
+elif [ "$2" = "list" ]; then
+echo "list"
+
 
 #else user can call another -keys to check changed file in directories
 else
@@ -79,13 +86,13 @@ mostFrequent=false	#-m
 dateAfter=""		#-a
 dateIgnored=""		#-b
 
-directory="$PWD"	#[DIRECTORY]
 
 fResult=""
 
 #Check if DIRECTORY was set by user. 
 if [ -d $lastArg ] && [ "$#" != "0" ]; then 
 	directory=$lastArg
+	
 fi
 
 #Check optional flags
@@ -101,15 +108,23 @@ while getopts "hmg:a:b:" opt; do
 
         m)
             	mostFrequent=true
+		shift
 	;;
 	g)
 		groupFilter="$OPTARG"
+		shift
+		shift
         ;;
 	a)
-		dateAfter="$OPTARG"	
+		dateAfter="$OPTARG"
+		shift
+		shift
+
 	;;
         b)
             	dateIgnored="$OPTARG"
+		shift
+		shift
         ;;
         \?)
             	echo "Wrong flag: -$OPTARG" >&2
@@ -118,36 +133,50 @@ while getopts "hmg:a:b:" opt; do
     esac
 done
 
+if [ "$#" != 0 ]; then
+	if [ "$1" != "$directory" ]; then
+		echo "You used unavalible argument" >&2
+		exit 1
+	fi
 
+fi
 fResult=$(grep -r "$directory" "$MOLE_RC")
 
 #Group filter 
-if ! [ -z "$groupFilter" ]; then
+if ! [ -z "$groupFilter" ] && ! [ -d "$groupFilter" ]; then
 	groupFilter=$(echo $groupFilter | sed 's/,/|/g')
 	fResult=$(echo "$fResult" | grep -E "$groupFilter")
 fi
 
 #Date ignored
-if ! [ -z "$dateIgnored" ]; then
+if ! [ -z "$dateIgnored" ] && ! [ -d "$dateIgnored" ]; then
 	fResult=$(echo "$fResult" | awk -v ignored="$dateIgnored" '{ if ($0 !~ ignored) print }')
 fi 
 
 #Date after
-if ! [ -z "$dateAfter" ]; then
+if ! [ -z "$dateAfter" ] && ! [ -d "$dateAfter" ]; then
 	fResult=$(echo "$fResult" | awk -v d="$dateAfter" -F',' '{if ($3 >= d) print $0}')
 fi
 
 #The most frequent file
 if [ "$mostFrequent" = "true" ]; then
-	fResult=$(echo "$fResult" | awk -F',' '{print $1}' | sort | uniq -c | sort -rn | head -n1 | awk '{print $2}')
+	fResult=$(echo "$fResult" | awk -F',' '{print $1}' | sort | uniq -c | awk '{print $2}') #Sort result to most frequent file name. Leave only file names
+else
+	fResult=$(echo "$fResult" | awk -F',' '{print $1}')	#Leave only file names
 fi
 
-
-
-#print result of filtration
-echo "$fResult"
-
-#testFunction 1 2 3
+#call openEditor(filePath)
+if [ "$fResult" = "\n" ] || [ "$fResult" = " " ] || [ "$fResult" = "" ]; then
+	echo "No file to open" >&2
+else
+	
+	for file in $fResult; do
+		if [ -f "$directory/$file" ]; then
+		openEditor "$directory/$file"
+		break
+		fi
+	done
+fi	
 
 #########################DONT DELETE#########################
 fi
