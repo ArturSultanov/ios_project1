@@ -16,6 +16,8 @@ function openEditor () { #Open file using EDITOR, VISUAL or vi.
 		else
 			eval '$EDITOR' $lastArg
 		fi
+	else
+		eval echo "$lastArg is not a file. Cant open editor" >&2
 	fi		
 }
 
@@ -30,28 +32,18 @@ function testFunction (){
 if [ -z $MOLE_RC ]; then
 	echo "MOLE_RC neexistuje" >&2
 	exit 2
+elif ! [ -f $MOLE_RC ]; then
+	mkdir -p "$(dirname "$MOLE_RC")" && touch "$MOLE_RC"
+	echo "MOLE_RC byl vytvoren"
 fi
-
-if [ ! -f $MOLE_RC ]; then
-		eval touch $MOLE_RC		
-		echo "MOLE_RC byl vytvoren"
-fi 
 
 
 ##### MAIN #####
 
-
 eval lastArg='$'$#
 
-filePath=$PWD
-
-
-gWasCalled=false
-mWasCalled=false
-
-
-
 #if lastArg is a file. User want to edit file or (and) to add to a group. 
+
 if [ -f $lastArg ] && [ "$#" != "0" ]; then #check if lastArg is a file.
 	if [ "$#" != "0" ]; then #check if lastArg is not a script name.
 		while getopts :g: OPTION; 
@@ -76,58 +68,84 @@ if [ -f $lastArg ] && [ "$#" != "0" ]; then #check if lastArg is a file.
 		fi
 
 	fi
+
+#else user can call another -keys to check changed file in directories
 else
 
+groupFilter=""		#-g
+mostFrequent=false	#-m
+dateAfter=""		#-a
+dateIgnored=""		#-b
 
-eval grep -r "$PWD" $MOLE_RC
+directory="$PWD"	#[DIRECTORY]
 
+fResult=""
 
-#while getopts :hg:m OPTION; 
-#do	case "$OPTION" in
-#	h)
-#	 echo "
-#		mole -h
-#		mole [-g GROUP] FILE
-#		mole [-m] [FILTERS] [DIRECTORY]
-#		mole list [FILTERS] [DIRECTORY]" ;;
-#    	g) 
-#      	 #gWasCalled=true
-#		#if [ -f $lastArg ]; then
-#
-#			#if [ "$lastArg" = "$OPTARG" ]; then
-	 		#	echo "You used '-g', but didn't select the group you want to add the file to" >&2 
-			#	exit 2 
-			#fi
+#Check if DIRECTORY was set by user. 
+if [ -d $lastArg ] && [ "$#" != "0" ]; then 
+	directory=$lastArg
+fi
 
-	 		#eval echo "$lastArg,$PWD,$(date +%Y-%m-%d),$OPTARG" >>$MOLE_RC 
-	 		#echo "Option g used"
-	 		#openEditor
-#			
-#		#else 
-#			echo "You used '-g', but didn't chose a file."
-#		#fi 
-#	 		;;    	
- #   	m)
-#	 mWasCalled=true
-#      	 echo "Option c used" ;;	
-#
-#	?)
-#	 printf "Usage: %s: [-h] [-m] [-g GROUP] args\n" $0 
-#      	 ;;
-#      esac
-#   done
+#Check optional flags
+while getopts "hmg:a:b:" opt; do
+    case $opt in
+	h)
+	   echo "mole -h\n
+		mole [-g GROUP] FILE\n
+		mole [-m] [FILTERS] [DIRECTORY]\n
+		mole list [FILTERS] [DIRECTORY]\n
+		mole secret-log [-b DATE] [-a DATE] [DIRECTORY1 [DIRECTORY2 [...]]]"
+	;;	
 
-testFunction 1 2 3
-
-
-#if [ ! -f $lastArg ]; then
-#
-#fi
+        m)
+            	mostFrequent=true
+	;;
+	g)
+		groupFilter="$OPTARG"
+        ;;
+	a)
+		dateAfter="$OPTARG"	
+	;;
+        b)
+            	dateIgnored="$OPTARG"
+        ;;
+        \?)
+            	echo "Wrong flag: -$OPTARG" >&2
+            	exit 1
+       	;;
+    esac
+done
 
 
+fResult=$(grep -r "$directory" "$MOLE_RC")
 
-#shift $OPTIND
+#Group filter 
+if ! [ -z "$groupFilter" ]; then
+	groupFilter=$(echo $groupFilter | sed 's/,/|/g')
+	fResult=$(echo "$fResult" | grep -E "$groupFilter")
+fi
 
-#echo "Remaining arguments: '$*'"
+#Date ignored
+if ! [ -z "$dateIgnored" ]; then
+	fResult=$(echo "$fResult" | awk -v ignored="$dateIgnored" '{ if ($0 !~ ignored) print }')
+fi 
 
+#Date after
+if ! [ -z "$dateAfter" ]; then
+	fResult=$(echo "$fResult" | awk -v d="$dateAfter" -F',' '{if ($3 >= d) print $0}')
+fi
+
+#The most frequent file
+if [ "$mostFrequent" = "true" ]; then
+	fResult=$(echo "$fResult" | awk -F',' '{print $1}' | sort | uniq -c | sort -rn | head -n1 | awk '{print $2}')
+fi
+
+
+
+#print result of filtration
+echo "$fResult"
+
+#testFunction 1 2 3
+
+#########################DONT DELETE#########################
 fi
