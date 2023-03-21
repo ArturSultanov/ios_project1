@@ -9,15 +9,17 @@ openEditor () { #Open file using EDITOR, VISUAL or vi.
 	if [ -f $1 ]; then	
 		if [ -z  $EDITOR ]; then
 			if [ -z $VISUAL ]; then	
-				eval 'vi' "$1"
+				vi "$1"
 			else
 				eval '$VISUAL' "$1"
 			fi
 		else
 			eval '$EDITOR' "$1"
 		fi
+		exit
 	else
 		echo "$1 is not a file. Cant open editor" >&2
+		exit 1
 	fi		
 }
 
@@ -38,72 +40,23 @@ elif ! [ -f $MOLE_RC ]; then
 fi
 
 
-##### MAIN #####
+###################### MAIN ######################################
 
 eval lastArg='$'$#
 directory="$PWD"	#[DIRECTORY]
 
+groupFilter=""		# -g
+mostFrequent=false	# -m
+dateAfter=""		# -a
+dateIgnored=""		# -b
+listSecond=false	# list
+gWasCalled=false
 
-#if lastArg is a file. User want to edit file or (and) to add to a group. 
-
-if [ -f $lastArg ] && [ "$#" != "0" ]; then #check if lastArg is a file.
-	if [ "$#" != "0" ]; then #check if lastArg is not a script name.
-		filePath="$directory/$lastArg"	
-	
-		gWasCalled=false
-		while getopts :g: OPTION; 
-		do	case "$OPTION" in
-		
-    		g) 
-      	 		gWasCalled=true
-				
-			if [ "$lastArg" = "$OPTARG" ]; then #if group was selected
-	 			echo "You used '-g', but didn't select the group you want to add the file to" >&2 
-				exit 2 
-			fi
-
-	 		eval echo "$lastArg,$PWD,$(date +%Y-%m-%d),$OPTARG" >>$MOLE_RC #write file_name,path,date,group to $MOLE_RC 
-	 		openEditor "$filePath" 
-	 		;;    
-		esac
-		done
-		
-		if [ "$gWasCalled" = false ]; then #if -g key wasn't used
-			openEditor "$filePath"
-		fi
-
-	fi
-#elif second arg. is list
-elif [ "$2" = "list" ]; then
-echo "list"
-
-
-#else user can call another -keys to check changed file in directories
-else
-
-groupFilter=""		#-g
-mostFrequent=false	#-m
-dateAfter=""		#-a
-dateIgnored=""		#-b
-
-
-fResult=""
-
-#Check if DIRECTORY was set by user. 
-if [ -d $lastArg ] && [ "$#" != "0" ]; then 
-	directory=$lastArg
-	
-fi
-
-#Check optional flags
 while getopts "hmg:a:b:" opt; do
     case $opt in
 	h)
-	   echo "mole -h\n
-		mole [-g GROUP] FILE\n
-		mole [-m] [FILTERS] [DIRECTORY]\n
-		mole list [FILTERS] [DIRECTORY]\n
-		mole secret-log [-b DATE] [-a DATE] [DIRECTORY1 [DIRECTORY2 [...]]]"
+	   echo -e  "mole -h\nmole [-g GROUP] FILE\nmole [-m] [FILTERS] [DIRECTORY]\nmole list [FILTERS] [DIRECTORY]\nmole secret-log [-b DATE] [-a DATE] [DIRECTORY1 [DIRECTORY2 [...]]]"
+	   exit
 	;;	
 
         m)
@@ -111,6 +64,7 @@ while getopts "hmg:a:b:" opt; do
 	;;
 	g)
 		groupFilter="$OPTARG"
+		gWasCalled=true
         ;;
 	a)
 		dateAfter="$OPTARG"
@@ -125,16 +79,55 @@ while getopts "hmg:a:b:" opt; do
     esac
 done
 
+#Check if DIRECTORY was set by user. 
+if [ -d $lastArg ] && [ "$#" != "0" ]; then 
+	directory=$lastArg
+	
+fi
+
+#Check is second argument is "list"
+if [ "$1" = "list" ]; then
+	listSecond=true
+	shift
+fi
+
 shift $((OPTIND-1))
 
+#Realization of calling "mole [-g GROUP] FILE"############################# 
+if [ -f $1 ] && [ "$#" != "0" ]; then #check if lastArg is a file.	
+      	 	if [ "$gWasCalled" = true ];then
+			fileDir=$(dirname "$1")
+			if ! [ -d fileDir ]; then
+				fileDir=$PWD
+			fi 
+	 		echo "$fileDir/$(echo "$1" | awk -F'/' '{print $NF}'),$(date +%Y-%m-%d),$groupFilter" >>$MOLE_RC #write file_path,date,group to $MOLE_RC 
+	 		openEditor "$1" 
+		
+		elif [ "$gWasCalled" = false ]; then #if -g key wasn't used
+			openEditor "$1"
+		fi
+
+
+#Realization of calling "mole list [FILTERS] [DIRECTORY]"##################
+elif [ "$listSecond" = true ]; then
+echo "list"
+
+
+#Realization of calling "mole [-m] [FILTERS] [DIRECTORY]"##################
+else
+
+fResult=""
+
+#Check optional flags
+#Check if user used unavalible argument
 if [ "$#" != 0 ]; then
 	if [ "$1" != "$directory" ]; then
 		echo "You used unavalible argument" >&2
 		exit 1
 	fi
-
 fi
 fResult=$(grep -r "$directory" "$MOLE_RC")
+echo "$fResult"
 
 #Group filter 
 if ! [ -z "$groupFilter" ] && ! [ -d "$groupFilter" ]; then
@@ -152,25 +145,26 @@ if ! [ -z "$dateAfter" ] && ! [ -d "$dateAfter" ]; then
 	fResult=$(echo "$fResult" | awk -v d="$dateAfter" -F',' '{if ($3 >= d) print $0}')
 fi
 
+#Save only file path
+fResult=$(echo "$fResult" | awk -F',' '{print $1}'| tac)
+
 #The most frequent file
 if [ "$mostFrequent" = "true" ]; then
-	fResult=$(echo "$fResult" | awk -F',' '{print $1}' | sort | uniq -c | awk '{print $2}') #Sort result to most frequent file name. Leave only file names
-else
-	fResult=$(echo "$fResult" | awk -F',' '{print $1}')	#Leave only file names
+	#Sort result to most frequent file
+	fResult=$(echo "$fResult" | sort | uniq -c | sort -nr| awk '{print $2}')
 fi
-
+echo "#################"
+echo "$fResult"
+echo "#################"
 #call openEditor(filePath)
-if [ "$fResult" = "\n" ] || [ "$fResult" = " " ] || [ "$fResult" = "" ]; then
-	echo "No file to open" >&2
-else
-	
-	for file in $fResult; do
-		if [ -f "$directory/$file" ]; then
-		openEditor "$directory/$file"
+while read -r line; do
+	if [ -f "$line" ]; then
+		echo "$line"
+		openEditor "$line" 
 		break
-		fi
-	done
-fi	
+	fi
+	
+done <<< "$fResult"
 
 #########################DONT DELETE#########################
 fi
