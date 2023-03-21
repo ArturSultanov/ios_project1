@@ -46,6 +46,12 @@ dateIgnored=""		# -b
 listSecond=false	# list
 gWasCalled=false
 
+#Check is second argument is "list"
+if [ "$1" = "list" ]; then
+	listSecond=true
+	shift
+fi
+
 while getopts "hmg:a:b:" opt; do
     case $opt in
 	h)
@@ -61,7 +67,6 @@ mole list [FILTERS] [DIRECTORY]"
 	;;
 	g)
 		groupFilter="$OPTARG"
-		gWasCalled=true
         ;;
 	a)
 		dateAfter="$OPTARG"
@@ -92,22 +97,14 @@ shift $((OPTIND-1))
 
 #Realization of calling "mole [-g GROUP] FILE"############################# 
 if [ -f $1 ] && [ "$#" != "0" ]; then #check if lastArg is a file.	
-      	if [ "$gWasCalled" = true ];then
-			
-			fileDir=$(dirname "$1")
+      	
+		fileDir=$(dirname "$1")
 			if ! [ -d fileDir ]; then
 				fileDir=$PWD
 			fi 
 			fileName="$(echo "$1" | awk -F'/' '{print $NF}')"
-	 		echo "$fileName,$fileDir/$fileName,$(date +%Y-%m-%d),$groupFilter" >>$MOLE_RC #write file_path,date,group to $MOLE_RC 
+	 		echo "$0,$fileName,$fileDir/$fileName,$(date +%Y-%m-%d),$groupFilter" >>"$MOLE_RC" #write file_path,date,group to $MOLE_RC 
 	 		openEditor "$fileDir/$fileName" 
-		
-		elif [ "$gWasCalled" = false ]; then #if -g key wasn't used
-			openEditor "$fileDir/$fileName" 
-		fi
-
-
-
 else
 
 fResult=""
@@ -136,55 +133,45 @@ fi
 
 #Date after
 if ! [ -z "$dateAfter" ] && ! [ -d "$dateAfter" ] && ! [ -f "$dateAfter" ]; then
-	fResult=$(echo "$fResult" | awk -v d="$dateAfter" -F',' '{if ($3 >= d) print $0}')
+	fResult=$(echo "$fResult" | awk -v d="$dateAfter" -F',' '{if ($4 >= d) print $0}')
 fi
 
 #Realization of calling "mole list [FILTERS] [DIRECTORY]"##################
 if [ "$listSecond" = true ]; then
-	#!/bin/sh
 
+# Инициализируем переменные для хранения результата и максимальной длины имени файла
+listResult=""
+max_file_len=0
 
-#!/bin/sh
+# Получаем имена файлов из второй колонки и удаляем дубликаты
+files=$(echo "$fResult" | awk -F',' '{print $2}' | sort -u)
 
-IFS='
-'
+# Итерируемся по каждому имени файла
+for file in $files; do
+  # Проверяем, что имя файла не является пустой строкой
+  if [ -n "$file" ]; then
+    # Извлекаем группы для данного файла
+    groups=$(echo "$fResult" | grep ",$file," | awk -F',' '{print $5}' | tr '\n' ' ' | sed 's/ $//')
+    
+    # Если группы не найдены, то записываем "-"
+    if [ -z "$groups" ]; then
+      groups="-"
+    fi
+    
+    # Обновляем максимальную длину имени файла, если текущая длина больше
+    file_len=$(echo "$file" | wc -c)
+    if [ "$file_len" -gt "$max_file_len" ]; then
+      max_file_len="$file_len"
+    fi
+    
+    # Добавляем имя файла и соответствующие ему группы в переменную result
+    listResult="$listResult$file: $groups\n"
+  fi
+done
 
-if [ -z "$fResult" ]; then
-    output="Нет файлов в заданной директории."
-else
-    # Получение самого длинного имени файла
-    max_length=0
-    for line in $fResult; do
-        file_name=$(echo "$line" | cut -d',' -f1)
-        if [ ${#file_name} -gt $max_length ]; then
-            max_length=${#file_name}
-        fi
-    done
-
-    output=""
-    unique_files=$(echo "$fResult" | cut -d',' -f1 | sort | uniq)
-    for file_name in $unique_files; do
-        groups=""
-        for line in $fResult; do
-            current_file_name=$(echo "$line" | cut -d',' -f1)
-            if [ "$file_name" = "$current_file_name" ]; then
-                current_group=$(echo "$line" | cut -d',' -f4)
-                if [ -n "$groups" ]; then
-                    groups="$groups,$current_group"
-                else
-                    groups="$current_group"
-                fi
-            fi
-        done
-        if [ -z "$groups" ]; then
-            groups="-"
-        fi
-        output="$output$(printf "%s:%*s%s\n" "$file_name" $((max_length - ${#file_name} + 1)) " " "$groups")"
-    done
-fi
-
-echo "$output"
-
+# Выводим результат, выравнивая группы по максимальной длине имени файла
+#listResult=$(echo "$listResult" | grep -v '^$') #delete empty lines
+echo "$listResult" | grep -v '^$'| awk -v max_file_len="$max_file_len" -F':' '{printf("%s:%"max_file_len-length($1)+2"s%s\n", $1, " ", $2)}'
 
 else
 
