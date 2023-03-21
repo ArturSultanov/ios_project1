@@ -134,7 +134,6 @@ fi
 
 fResult=$(grep -r "$directory" "$MOLE_RC")
 
-echo "$fResult"
 #Group filter 
 if ! [ -z "$groupFilter" ] && ! [ -d "$groupFilter" ]; then
 	groupFilter=$(echo "$groupFilter" | sed 's/,/|/g')
@@ -142,18 +141,17 @@ if ! [ -z "$groupFilter" ] && ! [ -d "$groupFilter" ]; then
 fi
 
 #Date ignored
-if ! [ -z "$dateIgnored" ] && ! [ -d "$dateIgnored" ]; then
+if ! [ -z "$dateIgnored" ] && ! [ -d "$dateIgnored" ] && ! [ -f "$dateAfter" ]; then
 	fResult=$(echo "$fResult" | awk -v ignored="$dateIgnored" '{ if ($0 !~ ignored) print }')
 fi 
 
 #Date after
-if ! [ -z "$dateAfter" ] && ! [ -d "$dateAfter" ]; then
+if ! [ -z "$dateAfter" ] && ! [ -d "$dateAfter" ] && ! [ -f "$dateAfter" ]; then
 	fResult=$(echo "$fResult" | awk -v d="$dateAfter" -F',' '{if ($3 >= d) print $0}')
 fi
 
 #Save only file path
-#fResult=$(echo "$fResult" | awk -F',' '{print $3"/"$2}' | tail -r)
-
+#Last edit file is first 
 fResult=$(echo "$fResult" | awk -F',' '{print $2}'  | tail -r)
 
 #The most frequent file
@@ -161,16 +159,16 @@ if [ "$mostFrequent" = "true" ]; then
 	#Sort result to most frequent file
 	fResult=$(echo "$fResult" | sort | uniq -c | sort -nr| awk '{print $2}')
 fi
-echo "###"
-echo "$fResult"
 
+#filter of deleted files
 fResultFiltered=$(echo "$fResult" | grep -xE '.*' | 
 			while read line; do 
 			[ -f "$line" ] && echo "$line"; 
 			done)
 
+#use openEditor to filtered file
 first_line=$(echo "$fResultFiltered" | head -n 1)
-'vim' "$first_line"
+openEditor "$first_line"
 
 #########################DONT DELETE#########################
 fi
