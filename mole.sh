@@ -2,6 +2,7 @@
 
 export POSIXLY_CORRECT=yes
 export LC_NUMERIC=en_US.UTF-8
+#export MOLE_RC=/Users/artur.sultanov/vut/ios/molerc/molerc.txt
 
 ##### FUNCTIONS #####
 
@@ -23,12 +24,6 @@ openEditor () { #Open file using EDITOR, VISUAL or vi.
 	fi		
 }
 
-function testFunction (){
-	t=$1
-   	echo "fresh(): \$1 is $t"
-}
-
-
 ##### MOLE_RC CONDITION CHECK #####
 
 if [ -z "$MOLE_RC" ]; then
@@ -38,7 +33,6 @@ elif ! [ -f "$MOLE_RC" ]; then
 	mkdir -p "$(dirname "$MOLE_RC")" && touch "$MOLE_RC"
 	echo "MOLE_RC byl vytvoren"
 fi
-
 
 ###################### MAIN ######################################
 
@@ -113,12 +107,7 @@ if [ -f $1 ] && [ "$#" != "0" ]; then #check if lastArg is a file.
 		fi
 
 
-#Realization of calling "mole list [FILTERS] [DIRECTORY]"##################
-elif [ "$listSecond" = true ]; then
-echo "list"
 
-
-#Realization of calling "mole [-m] [FILTERS] [DIRECTORY]"##################
 else
 
 fResult=""
@@ -150,6 +139,57 @@ if ! [ -z "$dateAfter" ] && ! [ -d "$dateAfter" ] && ! [ -f "$dateAfter" ]; then
 	fResult=$(echo "$fResult" | awk -v d="$dateAfter" -F',' '{if ($3 >= d) print $0}')
 fi
 
+#Realization of calling "mole list [FILTERS] [DIRECTORY]"##################
+if [ "$listSecond" = true ]; then
+	#!/bin/sh
+
+
+#!/bin/sh
+
+IFS='
+'
+
+if [ -z "$fResult" ]; then
+    output="Нет файлов в заданной директории."
+else
+    # Получение самого длинного имени файла
+    max_length=0
+    for line in $fResult; do
+        file_name=$(echo "$line" | cut -d',' -f1)
+        if [ ${#file_name} -gt $max_length ]; then
+            max_length=${#file_name}
+        fi
+    done
+
+    output=""
+    unique_files=$(echo "$fResult" | cut -d',' -f1 | sort | uniq)
+    for file_name in $unique_files; do
+        groups=""
+        for line in $fResult; do
+            current_file_name=$(echo "$line" | cut -d',' -f1)
+            if [ "$file_name" = "$current_file_name" ]; then
+                current_group=$(echo "$line" | cut -d',' -f4)
+                if [ -n "$groups" ]; then
+                    groups="$groups,$current_group"
+                else
+                    groups="$current_group"
+                fi
+            fi
+        done
+        if [ -z "$groups" ]; then
+            groups="-"
+        fi
+        output="$output$(printf "%s:%*s%s\n" "$file_name" $((max_length - ${#file_name} + 1)) " " "$groups")"
+    done
+fi
+
+echo "$output"
+
+
+else
+
+#Realization of calling "mole [-m] [FILTERS] [DIRECTORY]"##################
+
 #Save only file path
 #Last edit file is first 
 fResult=$(echo "$fResult" | awk -F',' '{print $2}'  | tail -r)
@@ -167,8 +207,11 @@ fResultFiltered=$(echo "$fResult" | grep -xE '.*' |
 			done)
 
 #use openEditor to filtered file
+if [ "$listSecond" = false ]; then
 first_line=$(echo "$fResultFiltered" | head -n 1)
 openEditor "$first_line"
+fi
 
+fi
 #########################DONT DELETE#########################
 fi
