@@ -9,7 +9,7 @@ openEditor () { #Open file using EDITOR, VISUAL or vi.
 	if [ -f "$1" ]; then	
 		if [ -z  "$EDITOR" ]; then
 			if [ -z "$VISUAL" ]; then	
-				"vi" "$1"
+				vi "$1"
 			else
 				eval '$VISUAL' "$1"
 			fi
@@ -55,7 +55,10 @@ gWasCalled=false
 while getopts "hmg:a:b:" opt; do
     case $opt in
 	h)
-	   echo "mole -h\\nmole [-g GROUP] FILE\\nmole [-m] [FILTERS] [DIRECTORY]\\nmole list [FILTERS] [DIRECTORY]"
+	   echo "mole -h
+mole [-g GROUP] FILE
+mole [-m] [FILTERS] [DIRECTORY]
+mole list [FILTERS] [DIRECTORY]"
 	   exit
 	;;	
 
@@ -95,13 +98,14 @@ shift $((OPTIND-1))
 
 #Realization of calling "mole [-g GROUP] FILE"############################# 
 if [ -f $1 ] && [ "$#" != "0" ]; then #check if lastArg is a file.	
-      	 	if [ "$gWasCalled" = true ];then
+      	if [ "$gWasCalled" = true ];then
+			
 			fileDir=$(dirname "$1")
 			if ! [ -d fileDir ]; then
 				fileDir=$PWD
 			fi 
 			fileName="$(echo "$1" | awk -F'/' '{print $NF}')"
-	 		echo "$fileName,$fileDir,$(date +%Y-%m-%d),$groupFilter" >>$MOLE_RC #write file_path,date,group to $MOLE_RC 
+	 		echo "$fileName,$fileDir/$fileName,$(date +%Y-%m-%d),$groupFilter" >>$MOLE_RC #write file_path,date,group to $MOLE_RC 
 	 		openEditor "$fileDir/$fileName" 
 		
 		elif [ "$gWasCalled" = false ]; then #if -g key wasn't used
@@ -127,12 +131,13 @@ if [ "$#" != 0 ]; then
 		exit 1
 	fi
 fi
-fResult=$(grep -r "$directory" "$MOLE_RC")
-echo "$fResult"
 
+fResult=$(grep -r "$directory" "$MOLE_RC")
+
+echo "$fResult"
 #Group filter 
 if ! [ -z "$groupFilter" ] && ! [ -d "$groupFilter" ]; then
-	groupFilter=$(echo $groupFilter | sed 's/,/|/g')
+	groupFilter=$(echo "$groupFilter" | sed 's/,/|/g')
 	fResult=$(echo "$fResult" | grep -E "$groupFilter")
 fi
 
@@ -145,27 +150,22 @@ fi
 if ! [ -z "$dateAfter" ] && ! [ -d "$dateAfter" ]; then
 	fResult=$(echo "$fResult" | awk -v d="$dateAfter" -F',' '{if ($3 >= d) print $0}')
 fi
-echo "$fResult"
+
 #Save only file path
-fResult=$(echo "$fResult" | awk -F',' '{print $1}' | tail -r)
+#fResult=$(echo "$fResult" | awk -F',' '{print $3"/"$2}' | tail -r)
+
+fResult=$(echo "$fResult" | awk -F',' '{print $2}'  | tail -r)
 
 #The most frequent file
 if [ "$mostFrequent" = "true" ]; then
 	#Sort result to most frequent file
 	fResult=$(echo "$fResult" | sort | uniq -c | sort -nr| awk '{print $2}')
 fi
-
-echo "#################"
-#call openEditor(filePath)
-while read -r line; do
-	if [ -f "$line" ]; then
-		#echo "$line"
-		#openEditor "$line" 
-		break
-	fi
-done << EOF
-$fResult
-EOF
+echo "###"
 echo "$fResult"
+
+first_line=$(echo "$fResult" | head -n 1)
+'vim' "$first_line"
+#
 #########################DONT DELETE#########################
 fi
