@@ -164,8 +164,13 @@ fi
 echo "###"
 echo "$fResult"
 
-first_line=$(echo "$fResult" | head -n 1)
+fResultFiltered=$(echo "$fResult" | grep -xE '.*' | 
+			while read line; do 
+			[ -f "$line" ] && echo "$line"; 
+			done)
+
+first_line=$(echo "$fResultFiltered" | head -n 1)
 'vim' "$first_line"
-#
+
 #########################DONT DELETE#########################
 fi
