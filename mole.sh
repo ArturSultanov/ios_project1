@@ -6,10 +6,10 @@ export LC_NUMERIC=en_US.UTF-8
 ##### FUNCTIONS #####
 
 openEditor () { #Open file using EDITOR, VISUAL or vi.
-	if [ -f $1 ]; then	
-		if [ -z  $EDITOR ]; then
-			if [ -z $VISUAL ]; then	
-				vi "$1"
+	if [ -f "$1" ]; then	
+		if [ -z  "$EDITOR" ]; then
+			if [ -z "$VISUAL" ]; then	
+				"vi" "$1"
 			else
 				eval '$VISUAL' "$1"
 			fi
@@ -31,10 +31,10 @@ function testFunction (){
 
 ##### MOLE_RC CONDITION CHECK #####
 
-if [ -z $MOLE_RC ]; then
+if [ -z "$MOLE_RC" ]; then
 	echo "MOLE_RC neexistuje" >&2
 	exit 2
-elif ! [ -f $MOLE_RC ]; then
+elif ! [ -f "$MOLE_RC" ]; then
 	mkdir -p "$(dirname "$MOLE_RC")" && touch "$MOLE_RC"
 	echo "MOLE_RC byl vytvoren"
 fi
@@ -55,7 +55,7 @@ gWasCalled=false
 while getopts "hmg:a:b:" opt; do
     case $opt in
 	h)
-	   echo -e  "mole -h\nmole [-g GROUP] FILE\nmole [-m] [FILTERS] [DIRECTORY]\nmole list [FILTERS] [DIRECTORY]\nmole secret-log [-b DATE] [-a DATE] [DIRECTORY1 [DIRECTORY2 [...]]]"
+	   echo "mole -h\\nmole [-g GROUP] FILE\\nmole [-m] [FILTERS] [DIRECTORY]\\nmole list [FILTERS] [DIRECTORY]"
 	   exit
 	;;	
 
@@ -80,7 +80,7 @@ while getopts "hmg:a:b:" opt; do
 done
 
 #Check if DIRECTORY was set by user. 
-if [ -d $lastArg ] && [ "$#" != "0" ]; then 
+if [ -d "$lastArg" ] && [ "$#" != "0" ]; then 
 	directory=$lastArg
 	
 fi
@@ -100,11 +100,12 @@ if [ -f $1 ] && [ "$#" != "0" ]; then #check if lastArg is a file.
 			if ! [ -d fileDir ]; then
 				fileDir=$PWD
 			fi 
-	 		echo "$fileDir/$(echo "$1" | awk -F'/' '{print $NF}'),$(date +%Y-%m-%d),$groupFilter" >>$MOLE_RC #write file_path,date,group to $MOLE_RC 
-	 		openEditor "$1" 
+			fileName="$(echo "$1" | awk -F'/' '{print $NF}')"
+	 		echo "$fileName,$fileDir,$(date +%Y-%m-%d),$groupFilter" >>$MOLE_RC #write file_path,date,group to $MOLE_RC 
+	 		openEditor "$fileDir/$fileName" 
 		
 		elif [ "$gWasCalled" = false ]; then #if -g key wasn't used
-			openEditor "$1"
+			openEditor "$fileDir/$fileName" 
 		fi
 
 
@@ -144,27 +145,27 @@ fi
 if ! [ -z "$dateAfter" ] && ! [ -d "$dateAfter" ]; then
 	fResult=$(echo "$fResult" | awk -v d="$dateAfter" -F',' '{if ($3 >= d) print $0}')
 fi
-
+echo "$fResult"
 #Save only file path
-fResult=$(echo "$fResult" | awk -F',' '{print $1}'| tac)
+fResult=$(echo "$fResult" | awk -F',' '{print $1}' | tail -r)
 
 #The most frequent file
 if [ "$mostFrequent" = "true" ]; then
 	#Sort result to most frequent file
 	fResult=$(echo "$fResult" | sort | uniq -c | sort -nr| awk '{print $2}')
 fi
-echo "#################"
-echo "$fResult"
+
 echo "#################"
 #call openEditor(filePath)
 while read -r line; do
 	if [ -f "$line" ]; then
-		echo "$line"
-		openEditor "$line" 
+		#echo "$line"
+		#openEditor "$line" 
 		break
 	fi
-	
-done <<< "$fResult"
-
+done << EOF
+$fResult
+EOF
+echo "$fResult"
 #########################DONT DELETE#########################
 fi
