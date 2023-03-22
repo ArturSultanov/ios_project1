@@ -158,8 +158,8 @@ for file in $files; do
   if [ -n "$file" ]; then
     # Извлекаем группы для данного файла
 
-    #                                         |  get 5 column - group  |del. same gr.|    \n -> ,  | del , at the str. end
-    groups=$(echo "$fResult" | grep ",$file," | awk -F',' '{print $5}' | sort | uniq | tr '\n' ',' | sed 's/,$//')
+    #                                         |  get 5 column - group  |del. same gr.|    \n -> ,  | del , at the str. start and end
+	groups=$(echo "$fResult" | grep ",$file," | awk -F',' '{print $5}' | sort | uniq | tr '\n' ',' | sed 's/^,//;s/,$//')
 
     # Если группы не найдены, то записываем "-"
     if [ -z "$groups" ]; then
@@ -184,9 +184,44 @@ exit
 
 #Realization of calling "mole secret-log [-b DATE] [-a DATE] [DIRECTORY1 [DIRECTORY2 [...]]]"##################
 elif [ "$secretLog" = true ]; then
-echo "kek"
+    secret_log_result=""
+    
+    # Get directories from the rest of the arguments
+    directories_list="${@}"
+	echo "$directories_list"
+	if [ -z "$directories_list" ]; then
+		directories_list="/"
+	fi
+    
+    # Iterate through the directories
+    for dir in $directories_list; do
+        # Check if directory is valid and exists
+        if [ -d "$dir" ]; then
+            secret_log_result="${secret_log_result}$(grep -F "$dir" "$MOLE_RC")\n"
+        fi
+    done
 
-exit
+    # Date ignored
+    if [ -n "$dateIgnored" ]; then
+        secret_log_result=$(echo "$secret_log_result" | awk -v ignrd="$dateIgnored" '{ if ($0 !~ ignrd) print }')
+    fi
+	# Date after
+    if [ -n "$dateAfter" ]; then
+        secret_log_result=$(echo "$secret_log_result" | awk -v a="$dateAfter" -F',' '{if ($4 >= a) print $0}')
+    fi
+    
+    # Format the result for the secret log
+    secret_log_result=$(echo "$secret_log_result" | awk -F',' '{print $3 ";" $4}' | sort)
+
+    # Save secret log to a file
+    secret_log_dir="${HOME}/.mole"
+    mkdir -p "$secret_log_dir"
+    secret_log_file="log_${USER}_$(date +%Y-%m-%d_%H-%M-%S).bz2"
+    secret_log_path="${secret_log_dir}/${secret_log_file}"
+
+    echo "$secret_log_result" | bzip2 > "$secret_log_path"
+    #echo "Secret log has been saved to: $secret_log_path"
+	exit
 else
 
 #Realization of calling "mole [-m] [FILTERS] [DIRECTORY]"##################
