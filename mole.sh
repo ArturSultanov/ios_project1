@@ -151,8 +151,10 @@ for file in $files; do
   # Проверяем, что имя файла не является пустой строкой
   if [ -n "$file" ]; then
     # Извлекаем группы для данного файла
-    groups=$(echo "$fResult" | grep ",$file," | awk -F',' '{print $5}' | tr '\n' ' ' | sed 's/ $//')
-    
+
+    #                                         |  get 5 column - group  |del. same gr.|    \n -> ,  | del , at the str. end
+    groups=$(echo "$fResult" | grep ",$file," | awk -F',' '{print $5}' | sort | uniq | tr '\n' ',' | sed 's/,$//')
+
     # Если группы не найдены, то записываем "-"
     if [ -z "$groups" ]; then
       groups="-"
