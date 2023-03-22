@@ -17,6 +17,16 @@ openEditor () { #Open file using EDITOR, VISUAL or vi.
 		else
 			eval '$EDITOR' "$1"
 		fi
+
+		fileDir=$(dirname "$1")
+		if ! [ -d fileDir ]; then
+				fileDir=$PWD
+		fi 
+		fileName="$(echo "$1" | awk -F'/' '{print $NF}')"
+		#write mole.sh,file_path,date,group to $MOLE_RC.
+		#write "mole.sh" or "$0" because getting $1 column for from $MOLE_RC is not stable. 
+		#$1 returns not only first column of the file string, but the path $MOLE_RC.
+	 	echo "$0,$fileName,$fileDir/$fileName,$(date +%Y-%m-%d),$groupFilter" >>"$MOLE_RC" 
 		exit
 	else
 		echo "$1 is not a file. Cant open editor" >&2
@@ -44,12 +54,23 @@ mostFrequent=false	# -m
 dateAfter=""		# -a
 dateIgnored=""		# -b
 listSecond=false	# list
-gWasCalled=false
+secretLog=false		# secret-log
 
-#Check is second argument is "list"
+#Check is first argument is "list"
 if [ "$1" = "list" ]; then
 	listSecond=true
 	shift
+fi
+
+#Check is first argument is "secret-log"
+if [ "$1" = "secret-log" ]; then
+	secretLog=true
+	shift
+fi
+
+#Check if DIRECTORY was set by user. 
+if [ -d "$lastArg" ] && [ "$#" != "0" ]; then 
+	directory=$lastArg
 fi
 
 while getopts "hmg:a:b:" opt; do
@@ -60,65 +81,50 @@ mole [-g GROUP] FILE
 mole [-m] [FILTERS] [DIRECTORY]
 mole list [FILTERS] [DIRECTORY]"
 	   exit
-	;;	
+		;;	
 
-        m)
-            	mostFrequent=true
-	;;
+    m)
+    	mostFrequent=true
+		;;
 	g)
 		groupFilter="$OPTARG"
-        ;;
+    	;;
 	a)
 		dateAfter="$OPTARG"
-	;;
-        b)
-            	dateIgnored="$OPTARG"
-        ;;
-        \?)
-            	echo "Wrong flag: -$OPTARG" >&2
-            	exit 1
-       	;;
+		;;
+    b)
+		dateIgnored="$OPTARG"
+    	;;
+    \?)
+        echo "Wrong flag: -$OPTARG" >&2
+        exit 1
+    	;;
+	:)
+    	echo "Требуется аргумент после параметра: -$OPTARG" >&2
+        exit 1
+    	;;
     esac
 done
-
-#Check if DIRECTORY was set by user. 
-if [ -d "$lastArg" ] && [ "$#" != "0" ]; then 
-	directory=$lastArg
-	
-fi
-
-#Check is second argument is "list"
-if [ "$1" = "list" ]; then
-	listSecond=true
-	shift
-fi
 
 shift $((OPTIND-1))
 
 #Realization of calling "mole [-g GROUP] FILE"############################# 
-if [ -f $1 ] && [ "$#" != "0" ]; then #check if lastArg is a file.	
-      	
-		fileDir=$(dirname "$1")
-			if ! [ -d fileDir ]; then
-				fileDir=$PWD
-			fi 
-			fileName="$(echo "$1" | awk -F'/' '{print $NF}')"
-	 		echo "$0,$fileName,$fileDir/$fileName,$(date +%Y-%m-%d),$groupFilter" >>"$MOLE_RC" #write file_path,date,group to $MOLE_RC 
-	 		openEditor "$fileDir/$fileName" 
+if [ -f "$1" ] && [ "$#" = "1" ]; then #check if lastArg is a file.	
+	 		openEditor "$1" 
+
 else
 
-fResult=""
+fResult=$(grep -r "$directory" "$MOLE_RC")
 
-#Check optional flags
-#Check if user used unavalible argument
-if [ "$#" != 0 ]; then
-	if [ "$1" != "$directory" ]; then
+#Check if user used another avalible arguments
+if [ "$#" -gt 0 ]; then
+	if [ "$1" != "$directory" ] && [ "$secretLog" = false ]; then
 		echo "You used unavalible argument" >&2
 		exit 1
+	elif [ "$secretLog" = true ]; then
+		directory_list="$@"
 	fi
 fi
-
-fResult=$(grep -r "$directory" "$MOLE_RC")
 
 #Group filter 
 if ! [ -z "$groupFilter" ] && ! [ -d "$groupFilter" ]; then
@@ -174,7 +180,13 @@ done
 # Выводим результат, выравнивая группы по максимальной длине имени файла
 #listResult=$(echo "$listResult" | grep -v '^$') #delete empty lines
 echo "$listResult" | grep -v '^$'| awk -v max_file_len="$max_file_len" -F':' '{printf("%s:%"max_file_len-length($1)+2"s%s\n", $1, " ", $2)}'
+exit
 
+#Realization of calling "mole secret-log [-b DATE] [-a DATE] [DIRECTORY1 [DIRECTORY2 [...]]]"##################
+elif [ "$secretLog" = true ]; then
+echo "kek"
+
+exit
 else
 
 #Realization of calling "mole [-m] [FILTERS] [DIRECTORY]"##################
