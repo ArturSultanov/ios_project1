@@ -2,9 +2,8 @@
 
 export POSIXLY_CORRECT=yes
 export LC_NUMERIC=en_US.UTF-8
-#export MOLE_RC=/Users/artur.sultanov/vut/ios/molerc/molerc.txt
 
-##### FUNCTIONS #####
+# FUNCTIONS
 
 openEditor () { #Open file using EDITOR, VISUAL or vi.
 	if [ -f "$1" ]; then	
@@ -35,8 +34,7 @@ openEditor () { #Open file using EDITOR, VISUAL or vi.
 	fi		
 }
 
-##### MOLE_RC CONDITION CHECK #####
-
+# MOLE_RC condition check
 if [ -z "$MOLE_RC" ]; then
 	echo "MOLE_RC neexistuje" >&2
 	exit 2
@@ -45,10 +43,8 @@ elif ! [ -f "$MOLE_RC" ]; then
 	echo "MOLE_RC byl vytvoren"
 fi
 
-###################### MAIN ######################################
-
 eval lastArg='$'$#
-directory="$PWD"	#[DIRECTORY]
+directory="$PWD"	# [DIRECTORY]
 
 groupFilter=""		# -g
 mostFrequent=false	# -m
@@ -57,19 +53,19 @@ dateIgnored=""		# -b
 listSecond=false	# list
 secretLog=false		# secret-log
 
-#Check is first argument is "list"
+# Check is first argument is "list"
 if [ "$1" = "list" ]; then
 	listSecond=true
 	shift
 fi
 
-#Check is first argument is "secret-log"
+# Check is first argument is "secret-log"
 if [ "$1" = "secret-log" ]; then
 	secretLog=true
 	shift
 fi
 
-#Check if DIRECTORY was set by user. 
+# Check if DIRECTORY was set by user. 
 if [ -d "$lastArg" ] && [ "$#" != "0" ]; then 
 	directory=$lastArg
 fi
@@ -109,148 +105,117 @@ done
 
 shift $((OPTIND-1))
 
-#Realization of calling "mole [-g GROUP] FILE"############################# 
-if [ -f "$1" ] && [ "$#" = "1" ]; then #check if lastArg is a file.	
+# Realization of calling "mole [-g GROUP] FILE"
+if [ -f "$1" ] && [ "$#" = "1" ]; then # check if lastArg is a file.	
 	 		openEditor "$1" 
 
 else
+		fResult=$(grep -r "$directory" "$MOLE_RC")
+		# Check if user used another avalible arguments
+		if [ "$#" -gt 0 ]; then
+			if [ "$1" != "$directory" ] && [ "$secretLog" = false ]; then
+				echo "You used unavalible argument" >&2
+				exit 1
+			elif [ "$secretLog" = true ]; then
+				directories_list="$*"
+			fi
+		fi
+		# Group filter 
+		if [ -n "$groupFilter" ] && ! [ -d "$groupFilter" ]; then
+			groupFilter=$(echo "$groupFilter" | sed 's/,/|/g')
+			fResult=$(echo "$fResult" | grep -E "$groupFilter")
+		fi
 
-fResult=$(grep -r "$directory" "$MOLE_RC")
+		# Date ignored
+		if [ -n "$dateIgnored" ] && ! [ -d "$dateIgnored" ] && ! [ -f "$dateAfter" ]; then
+			fResult=$(echo "$fResult" | awk -v ignored="$dateIgnored" '{ if ($0 !~ ignored) print }')
+		fi 
 
-#Check if user used another avalible arguments
-if [ "$#" -gt 0 ]; then
-	if [ "$1" != "$directory" ] && [ "$secretLog" = false ]; then
-		echo "You used unavalible argument" >&2
-		exit 1
-	elif [ "$secretLog" = true ]; then
-		directories_list="$*"
+		# Date after
+		if [ -n "$dateAfter" ] && ! [ -d "$dateAfter" ] && ! [ -f "$dateAfter" ]; then
+			fResult=$(echo "$fResult" | awk -v d="$dateAfter" -F',' '{if ($4 >= d) print $0}')
+		fi
+
+		# Realization of calling "mole list [FILTERS] [DIRECTORY]"
+		if [ "$listSecond" = true ]; then
+			listResult=""
+			max_file_len=0
+			files=$(echo "$fResult" | awk -F',' '{print $2}' | sort -u)
+
+			for file in $files; do
+				if [ -n "$file" ]; then
+					#                                         |  get 5 column - group  |del. same gr.|    \n -> ,  | del , at the str. start and end
+					groups=$(echo "$fResult" | grep ",$file," | awk -F',' '{print $5}' | sort | uniq | tr '\n' ',' | sed 's/^,//;s/,$//')
+
+					if [ -z "$groups" ]; then
+						groups="-"
+					fi
+			
+					file_len=$(echo "$file" | wc -c)
+					if [ "$file_len" -gt "$max_file_len" ]; then
+						max_file_len="$file_len"
+					fi
+			
+					listResult="$listResult$file: $groups\n"
+				fi
+			done
+			# listResult=$(echo "$listResult" | grep -v '^$') #delete empty lines
+			echo "$listResult" | grep -v '^$'| awk -v max_file_len="$max_file_len" -F':' '{printf("%s:%"max_file_len-length($1)+2"s%s\n", $1, " ", $2)}'
+			exit
+
+		# Realization of calling "mole secret-log [-b DATE] [-a DATE] [DIRECTORY1 [DIRECTORY2 [...]]]"
+		elif [ "$secretLog" = true ]; then
+			secret_log_result=""
+			# Get directories from the rest of the arguments
+			# directories_list="${@}"
+			if [ -z "$directories_list" ]; then
+				directories_list="/"
+			fi
+
+			for dir in $directories_list; do
+				if [ -d "$dir" ]; then
+					secret_log_result="${secret_log_result}$(grep -F "$dir" "$MOLE_RC")\n"
+				fi
+			done
+			# Date ignored
+			if [ -n "$dateIgnored" ]; then
+				secret_log_result=$(echo "$secret_log_result" | awk -v ignrd="$dateIgnored" '{ if ($0 !~ ignrd) print }')
+			fi
+			# Date after
+			if [ -n "$dateAfter" ]; then
+				secret_log_result=$(echo "$secret_log_result" | awk -v a="$dateAfter" -F',' '{if ($4 >= a) print $0}')
+			fi
+			
+			secret_log_result=$(echo "$secret_log_result" | awk 'NF' | awk -F',' '{print $3 ";" $4}' | sort)
+			# Save secret log to a file
+			secret_log_dir="${HOME}/.mole"
+			mkdir -p "$secret_log_dir"
+			secret_log_file="log_${USER}_$(date +%Y-%m-%d_%H-%M-%S).bz2"
+			secret_log_path="${secret_log_dir}/${secret_log_file}"
+
+			echo "$secret_log_result" | bzip2 > "$secret_log_path"
+			#echo "Secret log has been saved to: $secret_log_path"
+			exit
+		else
+
+		# Realization of calling "mole [-m] [FILTERS] [DIRECTORY]"
+		fResult=$(echo "$fResult" | awk -F',' '{print $2}'  | tail -r) 
+
+		# the most frequent file
+		if [ "$mostFrequent" = "true" ]; then
+			fResult=$(echo "$fResult" | sort | uniq -c | sort -nr| awk '{print $2}')
+		fi
+
+		# filter of deleted files
+		fResultFiltered=$(echo "$fResult" | grep -xE '.*' | 
+					while read -r line; do 
+					[ -f "$line" ] && echo "$line"; 
+					done)
+
+		# use openEditor to filtered file
+		if [ "$listSecond" = false ]; then
+			first_line=$(echo "$fResultFiltered" | head -n 1)
+			openEditor "$first_line"
+		fi
 	fi
-fi
-
-#Group filter 
-if ! [ -z "$groupFilter" ] && ! [ -d "$groupFilter" ]; then
-	groupFilter=$(echo "$groupFilter" | sed 's/,/|/g')
-	fResult=$(echo "$fResult" | grep -E "$groupFilter")
-fi
-
-#Date ignored
-if ! [ -z "$dateIgnored" ] && ! [ -d "$dateIgnored" ] && ! [ -f "$dateAfter" ]; then
-	fResult=$(echo "$fResult" | awk -v ignored="$dateIgnored" '{ if ($0 !~ ignored) print }')
-fi 
-
-#Date after
-if ! [ -z "$dateAfter" ] && ! [ -d "$dateAfter" ] && ! [ -f "$dateAfter" ]; then
-	fResult=$(echo "$fResult" | awk -v d="$dateAfter" -F',' '{if ($4 >= d) print $0}')
-fi
-
-#Realization of calling "mole list [FILTERS] [DIRECTORY]"##################
-if [ "$listSecond" = true ]; then
-
-# Инициализируем переменные для хранения результата и максимальной длины имени файла
-listResult=""
-max_file_len=0
-
-# Получаем имена файлов из второй колонки и удаляем дубликаты
-files=$(echo "$fResult" | awk -F',' '{print $2}' | sort -u)
-
-# Итерируемся по каждому имени файла
-for file in $files; do
-  # Проверяем, что имя файла не является пустой строкой
-  if [ -n "$file" ]; then
-    # Извлекаем группы для данного файла
-
-    #                                         |  get 5 column - group  |del. same gr.|    \n -> ,  | del , at the str. start and end
-	groups=$(echo "$fResult" | grep ",$file," | awk -F',' '{print $5}' | sort | uniq | tr '\n' ',' | sed 's/^,//;s/,$//')
-
-    # Если группы не найдены, то записываем "-"
-    if [ -z "$groups" ]; then
-      groups="-"
-    fi
-    
-    # Обновляем максимальную длину имени файла, если текущая длина больше
-    file_len=$(echo "$file" | wc -c)
-    if [ "$file_len" -gt "$max_file_len" ]; then
-      max_file_len="$file_len"
-    fi
-    
-    # Добавляем имя файла и соответствующие ему группы в переменную result
-    listResult="$listResult$file: $groups\n"
-  fi
-done
-
-# Выводим результат, выравнивая группы по максимальной длине имени файла
-#listResult=$(echo "$listResult" | grep -v '^$') #delete empty lines
-echo "$listResult" | grep -v '^$'| awk -v max_file_len="$max_file_len" -F':' '{printf("%s:%"max_file_len-length($1)+2"s%s\n", $1, " ", $2)}'
-exit
-
-#Realization of calling "mole secret-log [-b DATE] [-a DATE] [DIRECTORY1 [DIRECTORY2 [...]]]"##################
-elif [ "$secretLog" = true ]; then
-    secret_log_result=""
-    
-    # Get directories from the rest of the arguments
-    #directories_list="${@}"
-	echo "$directories_list"
-	if [ -z "$directories_list" ]; then
-		directories_list="/"
-	fi
-    
-    # Iterate through the directories
-    for dir in $directories_list; do
-        # Check if directory is valid and exists
-        if [ -d "$dir" ]; then
-            secret_log_result="${secret_log_result}$(grep -F "$dir" "$MOLE_RC")\n"
-        fi
-    done
-
-    # Date ignored
-    if [ -n "$dateIgnored" ]; then
-        secret_log_result=$(echo "$secret_log_result" | awk -v ignrd="$dateIgnored" '{ if ($0 !~ ignrd) print }')
-    fi
-	# Date after
-    if [ -n "$dateAfter" ]; then
-        secret_log_result=$(echo "$secret_log_result" | awk -v a="$dateAfter" -F',' '{if ($4 >= a) print $0}')
-    fi
-    
-    # Format the result for the secret log
-	secret_log_result=$(echo "$secret_log_result" | awk 'NF')
-
-    secret_log_result=$(echo "$secret_log_result" | awk -F',' '{print $3 ";" $4}' | sort)
-
-    # Save secret log to a file
-    secret_log_dir="${HOME}/.mole"
-    mkdir -p "$secret_log_dir"
-    secret_log_file="log_${USER}_$(date +%Y-%m-%d_%H-%M-%S).bz2"
-    secret_log_path="${secret_log_dir}/${secret_log_file}"
-
-    echo "$secret_log_result" | bzip2 > "$secret_log_path"
-    #echo "Secret log has been saved to: $secret_log_path"
-	exit
-else
-
-#Realization of calling "mole [-m] [FILTERS] [DIRECTORY]"##################
-
-#Save only file path
-#Last edit file is first 
-fResult=$(echo "$fResult" | awk -F',' '{print $2}'  | tail -r)
-
-#The most frequent file
-if [ "$mostFrequent" = "true" ]; then
-	#Sort result to most frequent file
-	fResult=$(echo "$fResult" | sort | uniq -c | sort -nr| awk '{print $2}')
-fi
-
-#filter of deleted files
-fResultFiltered=$(echo "$fResult" | grep -xE '.*' | 
-			while read line; do 
-			[ -f "$line" ] && echo "$line"; 
-			done)
-
-#use openEditor to filtered file
-if [ "$listSecond" = false ]; then
-first_line=$(echo "$fResultFiltered" | head -n 1)
-openEditor "$first_line"
-fi
-
-fi
-#########################DONT DELETE#########################
 fi
