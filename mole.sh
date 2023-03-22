@@ -27,6 +27,7 @@ openEditor () { #Open file using EDITOR, VISUAL or vi.
 		#write "mole.sh" or "$0" because getting $1 column for from $MOLE_RC is not stable. 
 		#$1 returns not only first column of the file string, but the path $MOLE_RC.
 	 	echo "$0,$fileName,$fileDir/$fileName,$(date +%Y-%m-%d),$groupFilter" >>"$MOLE_RC" 
+		
 		exit
 	else
 		echo "$1 is not a file. Cant open editor" >&2
@@ -122,7 +123,7 @@ if [ "$#" -gt 0 ]; then
 		echo "You used unavalible argument" >&2
 		exit 1
 	elif [ "$secretLog" = true ]; then
-		directory_list="$@"
+		directories_list="$*"
 	fi
 fi
 
@@ -187,7 +188,7 @@ elif [ "$secretLog" = true ]; then
     secret_log_result=""
     
     # Get directories from the rest of the arguments
-    directories_list="${@}"
+    #directories_list="${@}"
 	echo "$directories_list"
 	if [ -z "$directories_list" ]; then
 		directories_list="/"
@@ -211,6 +212,8 @@ elif [ "$secretLog" = true ]; then
     fi
     
     # Format the result for the secret log
+	secret_log_result=$(echo "$secret_log_result" | awk 'NF')
+
     secret_log_result=$(echo "$secret_log_result" | awk -F',' '{print $3 ";" $4}' | sort)
 
     # Save secret log to a file
