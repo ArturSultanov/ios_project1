@@ -6,7 +6,17 @@ export LC_NUMERIC=en_US.UTF-8
 # FUNCTIONS
 
 openEditor () { #Open file using EDITOR, VISUAL or vi.
-	if [ -f "$1" ]; then	
+	if [ -f "$1" ]; then
+		fileDir=$(dirname "$1")
+		if ! [ -d "fileDir" ]; then
+				fileDir=$PWD
+		fi 
+		fileName="$(echo "$1" | awk -F'/' '{print $NF}')"
+		#write mole.sh,file_path,date,group to $MOLE_RC.
+		#write "mole.sh" or "$0" because getting $1 column for from $MOLE_RC is not stable. 
+		#$1 returns not only first column of the file string, but the path $MOLE_RC.
+	 	echo "$0,$fileName,$fileDir/$fileName,$(date +%Y-%m-%d),$groupFilter" >>"$MOLE_RC" 
+			
 		if [ -z  "$EDITOR" ]; then
 			if [ -z "$VISUAL" ]; then	
 				vi "$1"
@@ -17,21 +27,37 @@ openEditor () { #Open file using EDITOR, VISUAL or vi.
 			eval '$EDITOR' "$1"
 		fi
 
-		fileDir=$(dirname "$1")
-		if ! [ -d fileDir ]; then
-				fileDir=$PWD
-		fi 
-		fileName="$(echo "$1" | awk -F'/' '{print $NF}')"
-		#write mole.sh,file_path,date,group to $MOLE_RC.
-		#write "mole.sh" or "$0" because getting $1 column for from $MOLE_RC is not stable. 
-		#$1 returns not only first column of the file string, but the path $MOLE_RC.
-	 	echo "$0,$fileName,$fileDir/$fileName,$(date +%Y-%m-%d),$groupFilter" >>"$MOLE_RC" 
-		
 		exit
 	else
 		echo "$1 is not a file. Cant open editor" >&2
 		exit 1
 	fi		
+}
+
+help()
+{       echo "-h:
+	Print help for using the script
+
+mole [-g GROUP] FILE:
+	The specified file will be opened.
+	If the -g flag was specified, the given file opening will also be assigned to a group named GROUP.
+    GROUP can be the name of either an existing or a new group.
+
+mole [-m] [FILTERS] [DIRECTORY]
+	Specifies file to open via editor
+	If DIRECTORY matches an existing directory, the script will select a file from that directory to open.
+	If the -m flag was specified, the script selects the file that was most often opened (edited) using the script.
+
+mole list [FILTERS] [DIRECTORY]:
+	The script will display a list of files that have been opened (edited) using the script in the given directory.
+
+FILTERS:
+	[-g GROUP1[,GROUP2[,...]]] – Group specification. A file will be considered (for opening or listing purposes) only if its execution falls into at least one of these groups.
+	[-a DATE] - Records of opened (edited) files before this date inclusive.
+	[-b DATE] - Records of opened (edited) files after this date inclusive.
+	The DATE argument is in the format YYYY-MM-DD.
+"
+
 }
 
 # MOLE_RC condition check
@@ -73,10 +99,7 @@ fi
 while getopts "hmg:a:b:" opt; do
     case $opt in
 	h)
-	   echo "mole -h
-mole [-g GROUP] FILE
-mole [-m] [FILTERS] [DIRECTORY]
-mole list [FILTERS] [DIRECTORY]"
+	   help
 	   exit
 		;;	
 
