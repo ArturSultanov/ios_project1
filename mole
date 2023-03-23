@@ -203,7 +203,7 @@ else
 					secretLogDatesResult="$secretLogDatesResult$file;$dates\n"
 				fi
 			done
-			echo "$secretLogDatesResult" | grep -v '^$'| bzip2 > "$secretLogPath"
+			echo "$secretLogDatesResult" | grep -v '^$'| sort | bzip2 > "$secretLogPath"
 			echo "Secret log has been saved to: $secretLogPath"
 			exit
 		else
