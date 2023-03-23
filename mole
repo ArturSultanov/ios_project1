@@ -37,10 +37,10 @@ openEditor () { #Open file using EDITOR, VISUAL or vi.
 # MOLE_RC condition check
 if [ -z "$MOLE_RC" ]; then
 	echo "MOLE_RC neexistuje" >&2
-	exit 2
+	exit 1
 elif ! [ -f "$MOLE_RC" ]; then
 	mkdir -p "$(dirname "$MOLE_RC")" && touch "$MOLE_RC"
-	echo "MOLE_RC byl vytvoren"
+	echo "MOLE_RC has been created"
 fi
 
 eval lastArg='$'$#
@@ -117,7 +117,7 @@ else
 				echo "You used unavalible argument" >&2
 				exit 1
 			elif [ "$secretLog" = true ]; then
-				directories_list="$*"
+				directoriesList="$*"
 			fi
 		fi
 		# Group filter 
@@ -165,36 +165,46 @@ else
 
 		# Realization of calling "mole secret-log [-b DATE] [-a DATE] [DIRECTORY1 [DIRECTORY2 [...]]]"
 		elif [ "$secretLog" = true ]; then
-			secret_log_result=""
+			secretLogResult=""
 			# Get directories from the rest of the arguments
-			# directories_list="${@}"
-			if [ -z "$directories_list" ]; then
-				directories_list="/"
+			# directoriesList="${@}"
+			if [ -z "$directoriesList" ]; then
+				directoriesList="/"
 			fi
 
-			for dir in $directories_list; do
+			for dir in $directoriesList; do
 				if [ -d "$dir" ]; then
-					secret_log_result="${secret_log_result}$(grep -F "$dir" "$MOLE_RC")\n"
+					secretLogResult="${secretLogResult}$(grep -F "$dir" "$MOLE_RC")\n"
 				fi
 			done
 			# Date ignored
 			if [ -n "$dateIgnored" ]; then
-				secret_log_result=$(echo "$secret_log_result" | awk -v ignrd="$dateIgnored" '{ if ($0 !~ ignrd) print }')
+				secretLogResult=$(echo "$secretLogResult" | awk -v ignrd="$dateIgnored" '{ if ($0 !~ ignrd) print }')
 			fi
 			# Date after
 			if [ -n "$dateAfter" ]; then
-				secret_log_result=$(echo "$secret_log_result" | awk -v a="$dateAfter" -F',' '{if ($4 >= a) print $0}')
+				secretLogResult=$(echo "$secretLogResult" | awk -v a="$dateAfter" -F',' '{if ($4 >= a) print $0}')
 			fi
 			
-			secret_log_result=$(echo "$secret_log_result" | awk 'NF' | awk -F',' '{print $3 ";" $4}' | sort)
+			secretLogResult=$(echo "$secretLogResult" | awk 'NF' | awk -F',' '{print $3 ";" $4}' | sort)
 			# Save secret log to a file
-			secret_log_dir="${HOME}/.mole"
-			mkdir -p "$secret_log_dir"
-			secret_log_file="log_${USER}_$(date +%Y-%m-%d_%H-%M-%S).bz2"
-			secret_log_path="${secret_log_dir}/${secret_log_file}"
+			secretLogDir="${HOME}/.mole"
+			mkdir -p "$secretLogDir"
+			secretLogFile="log_${USER}_$(date +%Y-%m-%d_%H-%M-%S).bz2"
+			secretLogPath="${secretLogDir}/${secretLogFile}"
 
-			echo "$secret_log_result" | bzip2 > "$secret_log_path"
-			#echo "Secret log has been saved to: $secret_log_path"
+			#format
+			secretLogDatesResult=""
+			files=$(echo "$secretLogResult" | awk -F';' '{print $1}' | sort -u)
+			for file in $files; do
+				if [ -n "$file" ]; then
+
+					dates=$(echo "$secretLogResult" | grep "$file;" | awk -F';' '{print $2}' | sort | uniq | tr '\n' ';' | sed 's/^;//;s/;$//')
+					secretLogDatesResult="$secretLogDatesResult$file;$dates\n"
+				fi
+			done
+			echo "$secretLogDatesResult" | grep -v '^$'| bzip2 > "$secretLogPath"
+			echo "Secret log has been saved to: $secretLogPath"
 			exit
 		else
 
