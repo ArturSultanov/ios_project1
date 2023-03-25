@@ -1,8 +1,0 @@
-mole,test2.txt,/Users/artur.sultanov/vut/ios/ios_project1/test2.txt,2023-03-23,
-mole,test3.txt,/Users/artur.sultanov/vut/ios/ios_project1/test3.txt,2023-03-23,
-mole,test3.txt,/Users/artur.sultanov/vut/ios/ios_project1/test3.txt,2023-03-23,
-mole,test3.txt,/Users/artur.sultanov/vut/ios/ios_project1/test3.txt,2023-03-23,group1
-mole,test3.txt,/Users/artur.sultanov/vut/ios/ios_project1/test3.txt,2023-03-23,group1
-mole,test3.txt,/Users/artur.sultanov/vut/ios/ios_project1/test3.txt,2023-03-23,group1
-mole,test3.txt,/Users/artur.sultanov/vut/ios/ios_project1/test3.txt,2023-03-23,group1
-mole,test3.txt,/Users/artur.sultanov/vut/ios/ios_project1/test3.txt,2023-03-23,group2
