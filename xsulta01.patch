@@ -1,5 +1,5 @@
 --- mole.odevzdany	2023-04-27 15:45:32
-+++ mole.changed	2023-04-27 16:00:59
++++ mole	2023-04-27 16:14:45
 @@ -15,7 +15,7 @@
  		#write mole.sh,file_path,date,group to $MOLE_RC.
  		#write "mole.sh" or "$0" because getting $1 column for from $MOLE_RC is not stable. 
@@ -23,13 +23,11 @@
  fi
  
  eval lastArg='$'$#
-@@ -150,13 +150,13 @@
- 		fi
+@@ -151,12 +151,12 @@
  
  		# Date ignored
--		if [ -n "$dateIgnored" ] && ! [ -d "$dateIgnored" ] && ! [ -f "$dateAfter" ]; then
+ 		if [ -n "$dateIgnored" ] && ! [ -d "$dateIgnored" ] && ! [ -f "$dateAfter" ]; then
 -			fResult=$(echo "$fResult" | awk -v ignored="$dateIgnored" '{ if ($0 !~ ignored) print }')
-+		if [ -n "$dateIgnored" ] && ! [ -d "$dateIgnored" ] && ! [ -f "$dateIgnored" ]; then
 +			fResult=$(echo "$fResult" | awk -v d="$dateIgnored" -F',' '{if ($4 >= d) print $0}')
  		fi 
  
@@ -45,7 +43,7 @@
  			# Date ignored
  			if [ -n "$dateIgnored" ]; then
 -				secretLogResult=$(echo "$secretLogResult" | awk -v ignrd="$dateIgnored" '{ if ($0 !~ ignrd) print }')
-+				secretLogResult=$(echo "$secretLogResult" |  awk -v a="$dateIgnored" -F',' '{if ($4 >= a) print $0}')
++				secretLogResult=$(echo "$secretLogResult" | awk -v a="$dateIgnored" -F',' '{if ($4 >= a) print $0}')
  			fi
  			# Date after
  			if [ -n "$dateAfter" ]; then
@@ -65,7 +63,7 @@
  
  		# Realization of calling "mole [-m] [FILTERS] [DIRECTORY]"
 -		fResult=$(echo "$fResult" | awk -F',' '{print $2}'  | tail -r) 
-+		fResult=$(echo "$fResult" | awk -F',' '{a[i++]=$2} END {for (j=i-1; j>=0;) print a[j--] }')
++		fResult=$(echo "$fResult" | awk -F',' '{a[i++]=$2} END {for (j=i-1; j>=0;) print a[j--] }') 
  
  		# the most frequent file
  		if [ "$mostFrequent" = "true" ]; then
