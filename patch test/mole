@@ -15,7 +15,7 @@ openEditor () { #Open file using EDITOR, VISUAL or vi.
 		#write mole.sh,file_path,date,group to $MOLE_RC.
 		#write "mole.sh" or "$0" because getting $1 column for from $MOLE_RC is not stable. 
 		#$1 returns not only first column of the file string, but the path $MOLE_RC.
-	 	echo "$0,$fileName,$fileDir/$fileName,$(date +%Y-%m-%d),$groupFilter" >>"$MOLE_RC" 
+	 	echo "$0,$fileName,$fileDir/$fileName,$(date +%Y-%m-%d_%H-%M-%S),$groupFilter" >>"$MOLE_RC" 
 			
 		if [ -z  "$EDITOR" ]; then
 			if [ -z "$VISUAL" ]; then	
@@ -74,8 +74,9 @@ directory="$PWD"	# [DIRECTORY]
 
 groupFilter=""		# -g
 mostFrequent=false	# -m
-dateAfter=""		# -a
-dateIgnored=""		# -b
+dateBefore=""		# -a
+dateAfter=""		# -b
+dateIgnored=""		# -d
 listSecond=false	# list
 secretLog=false		# secret-log
 
@@ -96,7 +97,7 @@ if [ -d "$lastArg" ] && [ "$#" != "0" ]; then
 	directory=$lastArg
 fi
 
-while getopts "hmg:a:b:" opt; do
+while getopts "hmg:a:b:d:" opt; do
     case $opt in
 	h)
 	   help
@@ -110,9 +111,12 @@ while getopts "hmg:a:b:" opt; do
 		groupFilter="$OPTARG"
     	;;
 	a)
+		dateBefore="$OPTARG"
+		;;
+	b)
 		dateAfter="$OPTARG"
 		;;
-    b)
+    d)
 		dateIgnored="$OPTARG"
     	;;
     \?)
@@ -157,6 +161,11 @@ else
 		# Date after
 		if [ -n "$dateAfter" ] && ! [ -d "$dateAfter" ] && ! [ -f "$dateAfter" ]; then
 			fResult=$(echo "$fResult" | awk -v d="$dateAfter" -F',' '{if ($4 >= d) print $0}')
+		fi
+
+		# Date before
+		if [ -n "$dateBefore" ] && ! [ -d "$dateBefore" ] && ! [ -f "$dateBefore" ]; then
+			fResult=$(echo "$fResult" | awk -v d="$dateBefore" -F',' '{if (d > $4) print $0}')
 		fi
 
 		# Realization of calling "mole list [FILTERS] [DIRECTORY]"
@@ -208,6 +217,11 @@ else
 			if [ -n "$dateAfter" ]; then
 				secretLogResult=$(echo "$secretLogResult" | awk -v a="$dateAfter" -F',' '{if ($4 >= a) print $0}')
 			fi
+
+			# Date before
+			if [ -n "$dateBefore" ]; then
+				secretLogResult=$(echo "$secretLogResult" | awk -v a="$dateBefore" -F',' '{if (a > $4) print $0}')
+			fi
 			
 			secretLogResult=$(echo "$secretLogResult" | awk 'NF' | awk -F',' '{print $3 ";" $4}' | sort)
 			# Save secret log to a file
@@ -232,7 +246,8 @@ else
 		else
 
 		# Realization of calling "mole [-m] [FILTERS] [DIRECTORY]"
-		fResult=$(echo "$fResult" | awk -F',' '{print $2}'  | tail -r) 
+		fResult=$(echo "$fResult" | awk -F',' '{a[i++]=$2} END {for (j=i-1; j>=0;) print a[j--] }')
+
 
 		# the most frequent file
 		if [ "$mostFrequent" = "true" ]; then

@@ -66,7 +66,7 @@ if [ -z "$MOLE_RC" ]; then
 	exit 1
 elif ! [ -f "$MOLE_RC" ]; then
 	mkdir -p "$(dirname "$MOLE_RC")" && touch "$MOLE_RC"
-	echo "MOLE_RC has been created"
+	#echo "MOLE_RC has been created"
 fi
 
 eval lastArg='$'$#
@@ -241,7 +241,7 @@ else
 				fi
 			done
 			echo "$secretLogDatesResult" | grep -v '^$'| sort | bzip2 > "$secretLogPath"
-			echo "Secret log has been saved to: $secretLogPath"
+			#echo "Secret log has been saved to: $secretLogPath"
 			exit
 		else
 
