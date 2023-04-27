@@ -62,7 +62,7 @@ FILTERS:
 
 # MOLE_RC condition check
 if [ -z "$MOLE_RC" ]; then
-	echo "ERROR: MOLE_RC neexistuje" >&2
+	echo "MOLE_RC neexistuje" >&2
 	exit 1
 elif ! [ -f "$MOLE_RC" ]; then
 	mkdir -p "$(dirname "$MOLE_RC")" && touch "$MOLE_RC"
@@ -226,7 +226,7 @@ else
 					secretLogDatesResult="$secretLogDatesResult$file;$dates\n"
 				fi
 			done
-			echo "$secretLogDatesResult" | grep -v '^$'| sort | bzip2 > "$secretLogPath"
+			echo "$secretLogDatesResult" | grep -v '^$'| sort -df | bzip2 > "$secretLogPath"
 			#echo "Secret log has been saved to: $secretLogPath"
 			exit
 		else
