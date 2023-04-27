@@ -144,14 +144,6 @@ done
 
 shift $((OPTIND-1))
 
-
-groupFilter=""		# -g
-mostFrequent=false	# -m
-dateBefore=""		# -a
-dateAfter=""		# -b
-dateIgnored=""		# -d
-listSecond=false	# list
-secretLog=false		# secret-log
 # Realization of calling "mole [-g GROUP] FILE"
 if [ "$#" = "1" ] && ! [ -d "$1" ] && [ "$mostFrequent" = false ] && [ "$listSecond" = false ] && [ "$secretLog" = false ] && [ -z "$dateBefore" ] && [ -z "$dateAfter" ] && [ -z "$dateIgnored" ]; then 	
 	openEditor "$1" 
