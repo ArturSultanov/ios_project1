@@ -6,7 +6,7 @@ export LC_NUMERIC=en_US.UTF-8
 # FUNCTIONS
 
 openEditor () { #Open file using EDITOR, VISUAL or vi.
-	if [ -f "$1" ]; then
+	#if [ -f "$1" ]; then
 		fileDir=$(dirname "$1")
 		if ! [ -d "fileDir" ]; then
 				fileDir=$PWD
@@ -28,10 +28,10 @@ openEditor () { #Open file using EDITOR, VISUAL or vi.
 		fi
 
 		exit
-	else
+	#else
 		echo "$1 is not a file. Cant open editor" >&2
 		exit 1
-	fi		
+	#fi		
 }
 
 help()
@@ -112,12 +112,24 @@ while getopts "hmg:a:b:d:" opt; do
     	;;
 	a)
 		dateBefore="$OPTARG"
+		if ! [[ $input_date =~ ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$ ]]; then
+			echo "Data format is incorrect. Please use YYYY-MM-DD data format." >&2
+			exit 1
+		fi
 		;;
 	b)
 		dateAfter="$OPTARG"
+		if ! [[ $input_date =~ ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$ ]]; then
+			echo "Data format is incorrect. Please use YYYY-MM-DD data format." >&2
+			exit 1
+		fi
 		;;
     d)
 		dateIgnored="$OPTARG"
+		if ! [[ $input_date =~ ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$ ]]; then
+			echo "Data format is incorrect. Please use YYYY-MM-DD data format." >&2
+			exit 1
+		fi
     	;;
     \?)
         echo "Wrong flag: -$OPTARG" >&2
@@ -133,7 +145,7 @@ done
 shift $((OPTIND-1))
 
 # Realization of calling "mole [-g GROUP] FILE"
-if [ -f "$1" ] && [ "$#" = "1" ]; then # check if lastArg is a file.	
+if ![ -d "$1" ] && [ "$#" = "1" ]; then # check if lastArg is a file.	
 	 		openEditor "$1" 
 
 else
