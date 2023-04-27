@@ -29,8 +29,8 @@ openEditor () { #Open file using EDITOR, VISUAL or vi.
 
 		exit
 	#else
-		echo "$1 is not a file. Cant open editor" >&2
-		exit 1
+	#	echo "$1 is not a file. Cant open editor" >&2
+	#	exit 1
 	#fi		
 }
 
