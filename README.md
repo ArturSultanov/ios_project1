@@ -1,6 +1,5 @@
 # ios_project1
 University project for studying bash(shell) scripts
-
 mole -h
 mole [-g GROUP] FILE
 mole [-m] [FILTERS] [DIRECTORY]
